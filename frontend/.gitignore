@@ -1,0 +1,19 @@
+# Environment variables (secrets)
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+.npm
+node_modules/
+.vscode/
+*.log
+
+# Build outputs
+build/
+dist/
+
+# OS
+.DS_Store

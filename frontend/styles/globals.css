@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional Markdown Styling */
+@layer base {
+  .markdown-content h1 { @apply text-3xl font-bold mt-8 mb-4 text-gray-900 dark:text-white; }
+  .markdown-content h2 { @apply text-2xl font-bold mt-6 mb-3 text-gray-800 dark:text-gray-100; }
+  .markdown-content h3 { @apply text-xl font-bold mt-5 mb-2 text-gray-800 dark:text-gray-200; }
+  .markdown-content p { @apply my-4 leading-relaxed text-gray-700 dark:text-gray-300; }
+  .markdown-content ul { @apply list-disc pl-6 my-4 space-y-2; }
+  .markdown-content ol { @apply list-decimal pl-6 my-4 space-y-2; }
+  .markdown-content li { @apply my-1; }
+  .markdown-content strong { @apply font-bold text-gray-900 dark:text-white; }
+  .markdown-content em { @apply italic; }
+  .markdown-content code { 
+    @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-pink-600 dark:text-pink-400; 
+  }
+  .markdown-content pre { 
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-6 border border-gray-700; 
+  }
+  .markdown-content blockquote { 
+    @apply border-l-4 border-blue-500 pl-4 italic my-6 text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-gray-800/50 py-2; 
+  }
+}
+
+body {
+  @apply antialiased;
+}
