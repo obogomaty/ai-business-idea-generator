@@ -7,7 +7,7 @@ app = FastAPI(title="SaaS Backend")
 # CORS: Allow frontend to call backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 🔒 Change to your Vercel URL in production
+    allow_origins=["*"], #  Change to your Vercel URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
