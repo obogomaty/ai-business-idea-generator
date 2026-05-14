@@ -7,7 +7,7 @@
 // const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 
 // export default function ProductPage() {
-//   const { isSignedIn } = useUser();
+//   const { isSignedIn, user } = useUser();  // ✅ Added 'user' here
 //   const [idea, setIdea] = useState("");
 //   const [isLoading, setIsLoading] = useState(false);
 //   const [error, setError] = useState("");
@@ -92,98 +92,202 @@
 // }
 
 
-// frontend/pages/product.tsx
-import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { fetchEventSource } from "@microsoft/fetch-event-source";
-import ReactMarkdown from "react-markdown";
 
-//  Fixed: Default to port 8005 (your backend port)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
+
+
+// // frontend/pages/product.tsx
+// import { useState } from "react";
+// import { useUser } from "@clerk/nextjs";
+// import { fetchEventSource } from "@microsoft/fetch-event-source";
+// import ReactMarkdown from "react-markdown";
+
+// //  Fixed: Default to port 8005 (your backend port)
+// const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
+
+// export default function ProductPage() {
+//   const { isSignedIn, user } = useUser();  // ✅ Added 'user' here
+//   const [idea, setIdea] = useState("");
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [error, setError] = useState("");
+
+//   const handleGenerate = async () => {
+//     if (!isSignedIn) {
+//       setError("Please sign in to generate ideas");
+//       return;
+//     }
+
+//     setIdea("");
+//     setIsLoading(true);
+//     setError("");
+
+//     try {
+//       await fetchEventSource(`${API_URL}/api`, {
+//         method: "GET",
+//         headers: {
+//           Accept: "text/event-stream",
+//         },
+//         onmessage(ev) {
+//           if (ev.data) {
+//             //  Fixed: Convert literal "\n" to actual newlines for clean Markdown
+//             const clean = ev.data.replace(/\\n/g, '\n');
+//             setIdea((prev) => prev + clean);
+//           }
+//         },
+//         onerror(err) {
+//           console.error("SSE error:", err);
+//           throw err;
+//         },
+//       });
+//     } catch (err: any) {
+//       console.error("Streaming failed:", err);
+//       setError("Error generating idea. Please try again.");
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   if (!isSignedIn) {
+//     return (
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//         <div className="text-center">
+//           <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
+//           <p className="text-gray-600 mb-6">Sign in to generate AI business ideas</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="min-h-screen bg-gray-50 py-12 px-4">
+//       <div className="max-w-3xl mx-auto">
+//         <div className="text-center mb-8">
+//           <h1 className="text-3xl font-bold text-gray-900">Business Idea Generator</h1>
+//           <p className="text-gray-600 mt-2">Powered by Groq AI • Real-time streaming</p>
+//         </div>
+
+//         <div className="bg-white rounded-xl shadow-lg p-6">
+//           <button
+//             onClick={handleGenerate}
+//             disabled={isLoading}
+//             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+//           >
+//             {isLoading ? "✨ Generating..." : " Generate Business Idea"}
+//           </button>
+
+//           {error && (
+//             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+//                {error}
+//             </div>
+//           )}
+
+//           {idea && (
+//             <div className="mt-6 prose prose-blue max-w-none whitespace-pre-wrap">
+//               <ReactMarkdown>{idea}</ReactMarkdown>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+// frontend/pages/product.tsx
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import ReactMarkdown from "react-markdown";
+import Header from "../components/Header";
 
 export default function ProductPage() {
-  const { isSignedIn } = useUser();
   const [idea, setIdea] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { isSignedIn, user } = useUser(); // ✅ 'user' added here
 
-  const handleGenerate = async () => {
-    if (!isSignedIn) {
-      setError("Please sign in to generate ideas");
-      return;
+  // Client-side subscription check (demo version)
+  useEffect(() => {
+    if (isSignedIn && user?.publicMetadata?.plan !== "pro") {
+      const usedToday = user?.publicMetadata?.ideasUsedToday || 0;
+      if (usedToday >= 3) {
+        window.location.href = "/pricing?upgrade=true";
+      }
     }
+  }, [isSignedIn, user]);
 
+  const generateIdea = async () => {
+    if (!isSignedIn) return alert("Please sign in first");
+    
+    setLoading(true);
     setIdea("");
-    setIsLoading(true);
-    setError("");
-
+    
     try {
-      await fetchEventSource(`${API_URL}/api`, {
-        method: "GET",
-        headers: {
-          Accept: "text/event-stream",
-        },
-        onmessage(ev) {
-          if (ev.data) {
-            //  Fixed: Convert literal "\n" to actual newlines for clean Markdown
-            const clean = ev.data.replace(/\\n/g, '\n');
-            setIdea((prev) => prev + clean);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005";
+      const response = await fetch(`${apiUrl}/api`);
+      
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split("\n")) {
+          if (line.startsWith("data: ")) {
+            const cleanText = line.replace("data: ", "").replace(/\\n/g, "\n");
+            setIdea(prev => prev + cleanText);
           }
-        },
-        onerror(err) {
-          console.error("SSE error:", err);
-          throw err;
-        },
-      });
-    } catch (err: any) {
-      console.error("Streaming failed:", err);
-      setError("Error generating idea. Please try again.");
+        }
+      }
+    } catch (error) {
+      console.error("Stream error:", error);
+      setIdea("Error generating idea. Please try again.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
-          <p className="text-gray-600 mb-6">Sign in to generate AI business ideas</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-slate-50">
+      <Header />
+
+      {/* Plan Status Badge */}
+      {isSignedIn && (
+        <div className="text-center mb-4">
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+            user?.publicMetadata?.plan === "pro" 
+              ? "bg-green-100 text-green-800" 
+              : "bg-yellow-100 text-yellow-800"
+          }`}>
+            {user?.publicMetadata?.plan === "pro" ? "🚀 Pro Plan" : "✨ Free Plan (3/day)"}
+          </span>
+        </div>
+      )}
+
+      <main className="container mx-auto px-6 py-12 max-w-3xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Business Idea Generator</h1>
-          <p className="text-gray-600 mt-2">Powered by Groq AI • Real-time streaming</p>
+          <p className="text-gray-600">Powered by Groq AI • Real-time streaming</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white p-8 rounded-2xl shadow-lg">
           <button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            onClick={generateIdea}
+            disabled={loading || !isSignedIn}
+            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
           >
-            {isLoading ? "✨ Generating..." : " Generate Business Idea"}
+            {loading ? " Generating..." : "Generate Business Idea"}
           </button>
 
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-               {error}
-            </div>
-          )}
-
           {idea && (
-            <div className="mt-6 prose prose-blue max-w-none whitespace-pre-wrap">
-              <ReactMarkdown>{idea}</ReactMarkdown>
+            <div className="mt-8 bg-slate-50 p-6 rounded-lg border border-slate-200">
+              <div className="prose prose-blue max-w-none text-gray-800">
+                <ReactMarkdown>{idea}</ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

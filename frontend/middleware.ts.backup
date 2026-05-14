@@ -1,0 +1,31 @@
+// frontend/middleware.ts
+import { authMiddleware } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
+
+export default authMiddleware({
+  // Public routes (no auth required)
+  publicRoutes: ["/", "/sign-in", "/sign-up", "/pricing"],
+  
+  afterAuth(auth, req) {
+    // Only protect /product route
+    if (auth.userId && req.nextUrl.pathname === "/product") {
+      const plan = auth.sessionClaims?.metadata?.plan;
+      
+      // Free tier: limit to 3 ideas/day (simple demo version)
+      if (plan !== "pro") {
+        const usedToday = auth.sessionClaims?.metadata?.ideasUsedToday || 0;
+        if (usedToday >= 3) {
+          // Redirect to pricing with upgrade CTA
+          const pricingUrl = new URL("/pricing", req.url);
+          pricingUrl.searchParams.set("upgrade", "true");
+          return NextResponse.redirect(pricingUrl);
+        }
+      }
+    }
+    return NextResponse.next();
+  },
+});
+
+export const config = {
+  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+};
