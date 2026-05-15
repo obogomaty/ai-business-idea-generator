@@ -1,6 +1,3 @@
-// frontend/pages/pricing.tsx
-"use client";
-
 import { useUser, useClerk } from "@clerk/nextjs";
 import Header from "../components/Header";
 import Link from "next/link";
@@ -11,44 +8,23 @@ export default function PricingPage() {
   const { session } = useClerk();
   const [loading, setLoading] = useState(false);
 
-  // ✅ SAFE: Use Clerk's official metadata update pattern
   const handleDemoUpgrade = async () => {
     if (!user || !session) return;
     setLoading(true);
     try {
-      // Clerk's official way to update public metadata
-      await user.update({
+      await (user as any).update({
         unsafeMetadata: {
           plan: "pro",
           subscriptionStatus: "active",
           upgradedAt: new Date().toISOString(),
-        } as any,
+        },
       });
       await session.reload();
       alert("🎉 Demo Pro activated!");
       window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       alert("Failed to activate demo Pro");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoDowngrade = async () => {
-    if (!user || !session) return;
-    setLoading(true);
-    try {
-      await user.update({
-        unsafeMetadata: {
-          plan: "free",
-          subscriptionStatus: "inactive",
-        } as any,
-      });
-      await session.reload();
-      alert("⬇️ Downgraded to Free");
-    } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }
